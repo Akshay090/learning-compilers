@@ -1,24 +1,77 @@
-const fakeParseJSON = (str) => {
+function fakeParseJSON(str) {
   let i = 0;
 
   return parseValue();
-  /** 
-  naming convention:
-    We call parseSomething, when we parse the code based on grammar and use the return value
-    We call eatSomething, when we expect the character(s) to be there, but we are not using the character(s)
-    We call skipSomething, when we are okay if the character(s) is not there.
-*/
-  function eatComma() {
-    if (str[i] !== ",") {
-      throw new Error('Expected "," ');
+
+  function parseObject() {
+    if (str[i] === "{") {
+      i++;
+      skipWhitespace();
+
+      const result = {};
+
+      let initial = true;
+      // if it is not '}',
+      // we take the path of string -> whitespace -> ':' -> value -> ...
+      while (str[i] !== "}") {
+        if (!initial) {
+          eatComma();
+          skipWhitespace();
+        }
+        const key = parseString();
+        skipWhitespace();
+        eatColon();
+        const value = parseValue();
+        result[key] = value;
+        initial = false;
+      }
+      // move to the next character of '}'
+      i++;
+
+      return result;
     }
-    i++;
   }
-  function eatColon() {
-    if (str[i] !== ":") {
-      throw new Error('Expected ":" ');
+
+  function parseArray() {
+    if (str[i] === "[") {
+      i++;
+      skipWhitespace();
+
+      const result = [];
+      let initial = true;
+      while (str[i] !== "]") {
+        if (!initial) {
+          eatComma();
+        }
+        const value = parseValue();
+        result.push(value);
+        initial = false;
+      }
+      // move to the next character of ']'
+      i++;
+      return result;
     }
-    i++;
+  }
+
+  function parseValue() {
+    skipWhitespace();
+    const value =
+      parseString() ??
+      parseNumber() ??
+      parseObject() ??
+      parseArray() ??
+      parseKeyword("true", true) ??
+      parseKeyword("false", false) ??
+      parseKeyword("null", null);
+    skipWhitespace();
+    return value;
+  }
+
+  function parseKeyword(name, value) {
+    if (str.slice(i, i + name.length) === name) {
+      i += name.length;
+      return value;
+    }
   }
 
   function skipWhitespace() {
@@ -81,25 +134,6 @@ const fakeParseJSON = (str) => {
     );
   }
 
-  function parseArray() {
-    if (str[i] == "[") {
-      i++;
-
-      let result = [];
-      let initial = true;
-      while (str[i] !== "]") {
-        if (!initial) {
-          eatComma();
-        }
-        const value = parseValue();
-        result.push(value);
-      }
-      // move to the next character of ']'
-      i++;
-      return result;
-    }
-  }
-
   function parseNumber() {
     let start = i;
     if (str[i] === "-") {
@@ -134,62 +168,20 @@ const fakeParseJSON = (str) => {
     }
   }
 
-  function parseValue() {
-    skipWhitespace();
-
-    const value =
-      parseString() ??
-      parseNumber() ??
-      parseObject() ??
-      parseArray() ??
-      parseKeyword("true", true) ??
-      parseKeyword("false", false) ??
-      parseKeyword("null", null);
-
-    skipWhitespace();
-    return value;
-  }
-
-  function parseKeyword(name, value) {
-    if (String(str).slice(i, i + name.length) === value) {
-      i += name.length;
-      return value;
+  function eatComma() {
+    if (str[i] !== ",") {
+      throw new Error('Expected ",".');
     }
+    i++;
   }
-  function parseObject() {
-    if (str[i] == "{") {
-      i++;
-      skipWhitespace();
 
-      let result = {};
-
-      let initial = true;
-
-      // if it is not '}',
-      // we take the path of string -> whitespace -> ':' -> value -> ...s
-      while (str[i] !== "}") {
-        if (!initial) {
-          eatComma();
-          skipWhitespace();
-        }
-
-        skipWhitespace();
-        const key = parseString();
-
-        skipWhitespace();
-        eatColon();
-        const value = parseValue();
-        result[key] = value;
-        initial = false;
-      }
-
-      // move to the next character of '}'
-      i++;
-
-      return result;
+  function eatColon() {
+    if (str[i] !== ":") {
+      throw new Error('Expected ":".');
     }
+    i++;
   }
-};
+}
 
 const jsonStr1 =
   '{ "data": { "fish": "cake", "array": [1,2,3], "children": [ { "something": "else" }, { "candy": "cane" }, { "sponge": "bob" } ] } } ';
